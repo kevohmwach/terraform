@@ -1,0 +1,51 @@
+credentials.tf
+.terraform
+publickey
+terraform.tfstate
+terraform.tfstate.backup
+.terraform.lock.hcl
+# terraform.tfstate
+# git rm -r --cached .  # reset all the staged changes 
+
+
+
+# I solved this by the following.
+
+# Check your log of commits.
+
+# git log
+# It shows the console output like this:
+
+# commit AAAA (HEAD -> main)
+# Author: koyamashinji 
+# Date:   Sat Nov 20 16:49:08 2021 +0900
+
+#     backup20211120
+
+# commit BBBB
+# Author: koyamashinji 
+# Date:   Sat Nov 20 15:32:23 2021 +0900
+
+#     backup20211120
+
+# commit CCCC
+# Author: koyamashinji 
+# Date:   Sat Nov 20 15:24:47 2021 +0900
+
+#     backup20211120
+
+# commit DDDD (origin/main, master)
+# Author: koyamashinji 
+# Date:   Sun Nov 14 18:15:27 2021 +0900
+
+#     initial backup
+# Go back to the commit BEFORE adding the large file. (which in this case was commit DDDD.
+
+# git reset --soft DDDD
+
+# After that, just push normally like below.
+
+# git add -A
+# git commit -m "my_commit"
+# git push
+
