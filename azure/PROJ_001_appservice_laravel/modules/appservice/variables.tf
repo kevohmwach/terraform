@@ -1,4 +1,7 @@
 # Root variables
+variable "project_name" {
+  type = string
+}
 variable "resource_group_name" {
   type = string
 }
@@ -18,6 +21,13 @@ variable "custom_domain_name" {
 variable "db_host" {
   type = string
 }
+
+# variable "kv_db_host_write" {
+#   type = string
+# }
+# variable "kv_db_host_read" {
+#   type = string
+# }
 variable "production_db_name" {
   type = string
 }

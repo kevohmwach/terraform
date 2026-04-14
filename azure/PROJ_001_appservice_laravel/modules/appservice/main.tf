@@ -3,6 +3,8 @@ locals {
     "APP_KEY" = var.laravel_credentials.env.appkey
     "DB_CONNECTION" = "mysql"
     "DB_HOST" = var.db_host
+    # "DB_HOST_WRITE" = "@Microsoft.KeyVault(SecretUri=${var.kv_db_host_write})"
+    # "DB_HOST_READ" = "@Microsoft.KeyVault(SecretUri=${var.kv_db_host_read})"
     "DB_PORT" = "3306"
     "DB_USERNAME" = var.laravel_credentials.db.admin_user
     "DB_PASSWORD" = var.laravel_credentials.db.admin_pass
@@ -10,6 +12,10 @@ locals {
     "MYSQL_ATTR_SSL_CA" = "/home/site/wwwroot/certs/DigiCertGlobalRootG2.crt.pem"
     "ApplicationInsightsAgent_EXTENSION_VERSION" = "~3"
     "APP_DEBUG"     = "true"
+    "SESSION_DRIVER" = "database"
+    "SESSION_LIFETIME" = "120"
+    SESSION_SECURE_COOKIE=true
+
     "LOG_STACK" = "single,insights"
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "false"
     "APPINSIGHTS_INSTRUMENTATIONKEY"        = var.instrumentation_key
@@ -33,8 +39,8 @@ resource "azurerm_service_plan" "app_service_plan_laravel" {
   location            = var.location
   os_type             = "Linux"
 #   sku_name            = "B1" 
-  sku_name            = "S1" # Allow adding slots for staging/blue-green deployments
-  # sku_name            = "P1v2" 
+  # sku_name            = "S1" # Allow adding slots for staging/blue-green deployments
+  sku_name            = "P1v2" # Allow autoscaling 
 }
 
 
@@ -196,5 +202,65 @@ resource "azurerm_app_service_certificate_binding" "custom_domain_ssl" {
   hostname_binding_id = azurerm_app_service_custom_hostname_binding.custom_domain.id
   certificate_id      = azurerm_app_service_managed_certificate.custom_domain_cert.id
   ssl_state           = "SniEnabled"
+}
+
+# Configure auto-scalling cpu utilization hits 70%
+resource "azurerm_monitor_autoscale_setting" "app_autoscale" {
+  name                = "autoscale-${var.project_name}"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  target_resource_id  = azurerm_service_plan.app_service_plan_laravel.id # Targets the Plan, not the App
+
+  profile {
+    name = "defaultProfile"
+
+    capacity {
+      default = 1
+      minimum = 1
+      maximum = 3 # Limits your cost so it doesn't scale to infinity
+    }
+
+    # RULE 1: SCALE OUT (Add instance if CPU > 70%)
+    rule {
+      metric_trigger {
+        metric_name        = "CpuPercentage"
+        metric_resource_id = azurerm_service_plan.app_service_plan_laravel.id
+        time_grain         = "PT1M"
+        statistic          = "Average"
+        time_window        = "PT5M"
+        time_aggregation   = "Average"
+        operator           = "GreaterThan"
+        threshold          = 70
+      }
+
+      scale_action {
+        direction = "Increase"
+        type      = "ChangeCount"
+        value     = "1"
+        cooldown  = "PT5M" # Wait 5 mins before scaling again
+      }
+    }
+
+    # RULE 2: SCALE IN (Remove instance if CPU < 30%)
+    rule {
+      metric_trigger {
+        metric_name        = "CpuPercentage"
+        metric_resource_id = azurerm_service_plan.app_service_plan_laravel.id
+        time_grain         = "PT1M"
+        statistic          = "Average"
+        time_window        = "PT5M"
+        time_aggregation   = "Average"
+        operator           = "LessThan"
+        threshold          = 30
+      }
+
+      scale_action {
+        direction = "Decrease"
+        type      = "ChangeCount"
+        value     = "1"
+        cooldown  = "PT5M"
+      }
+    }
+  }
 }
 

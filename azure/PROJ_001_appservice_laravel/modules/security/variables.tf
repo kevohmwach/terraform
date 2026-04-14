@@ -39,4 +39,13 @@ variable "custom_domain_enabled" {
   default = false
 }
 
+variable "db_host_write" {
+  type = string
+}
 
+variable "db_host_read" {
+  type = string
+}
+variable "random_generated_db_admin_pass" {
+  type = string
+}

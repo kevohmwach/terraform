@@ -2,6 +2,12 @@
 output "db_host" {
   value       = azurerm_mysql_flexible_server.db_server_flex_laravel.fqdn
 }
+# output "db_host_write" {
+#   value       = azurerm_mysql_flexible_server.db_server_flex_laravel.fqdn
+# }
+# output "db_host_read" {
+#   value       = azurerm_mysql_flexible_server.replica.fqdn
+# }
 output "db_server_id" {
   value       = azurerm_mysql_flexible_server.db_server_flex_laravel.id
 }

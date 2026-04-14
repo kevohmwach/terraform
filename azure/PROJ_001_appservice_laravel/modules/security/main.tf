@@ -23,24 +23,38 @@ resource "azurerm_key_vault" "vault" {
   }
 }
 
-# Generate a strong, random password
-resource "random_password" "db_admin_pass" {
-  length           = 20
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?" # Avoid characters that break CLI strings
-}
+# # Generate a strong, random password
+# resource "random_password" "db_admin_pass" {
+#   length           = 20
+#   special          = true
+#   override_special = "!#$%&*()-_=+[]{}<>:?" # Avoid characters that break CLI strings
+# }
 # Store your DB Password as a Secret
 resource "azurerm_key_vault_secret" "db_password" {
   name         = "db-password"
-  value        = random_password.db_admin_pass.result
+  value        = var.random_generated_db_admin_pass
   key_vault_id = azurerm_key_vault.vault.id
-  depends_on = [ random_password.db_admin_pass, azurerm_key_vault_access_policy.terraform_user]
+  depends_on = [ var.random_generated_db_admin_pass, azurerm_key_vault_access_policy.terraform_user]
 #   depends_on = [ random_password.db_admin_pass, azurerm_key_vault_access_policy.terraform_user ]
 }
 
 resource "azurerm_key_vault_secret" "app_url" {
   name         = "app-url"
   value        = local.final_url
+  key_vault_id = azurerm_key_vault.vault.id
+  depends_on = [azurerm_key_vault_access_policy.terraform_user]
+}
+
+resource "azurerm_key_vault_secret" "db_host_write" {
+  name         = "db-host-write"
+  value        = var.db_host_write
+  key_vault_id = azurerm_key_vault.vault.id
+  depends_on = [azurerm_key_vault_access_policy.terraform_user]
+}
+
+resource "azurerm_key_vault_secret" "db_host_read" {
+  name         = "db-host-read"
+  value        = var.db_host_read
   key_vault_id = azurerm_key_vault.vault.id
   depends_on = [azurerm_key_vault_access_policy.terraform_user]
 }

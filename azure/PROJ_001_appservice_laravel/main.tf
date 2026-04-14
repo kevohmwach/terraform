@@ -67,6 +67,12 @@ resource "azurerm_resource_group" "RG_app_service" {
     name = "app-service-rg"
     location = var.prod_location
 }
+# Generate a strong, random password
+resource "random_password" "db_admin_pass" {
+  length           = 20
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?" # Avoid characters that break CLI strings
+}
 //*
 # resource "azurerm_virtual_network" "VNET_terraform" {
 #   name                = "terraform-vnet"
@@ -438,6 +444,7 @@ module "appservice" {
   source = "./modules/appservice"
   resource_group_name = azurerm_resource_group.RG_app_service.name
   location            = azurerm_resource_group.RG_app_service.location
+  project_name        = var.project_name
   production_db_name = module.db.production_db_name
   staging_db_name = module.db.staging_db_name
   db_host = module.db.db_host
@@ -452,6 +459,8 @@ module "appservice" {
   key_vault_secret_id_db_password = module.security.key_vault_secret_id_db_password
   custom_domain_name = var.custom_domain_name
   key_vault_secret_id_app_url = module.security.key_vault_secret_id_app_url
+  # kv_db_host_write = module.security.key_vault_secret_id_db_host_write
+  # kv_db_host_read = module.security.key_vault_secret_id_db_host_read
 
   laravel_credentials = {
     pat: {
@@ -481,7 +490,7 @@ module "db" {
   db_subnet_id = module.network.db_subnet_id
   private_dns_zone_id = module.network.private_dns_zone_id
   private_dns_vnet_link_id = module.network.private_dns_vnet_link_id
-  random_password_db_admin_pass = module.security.random_password_db_admin_pass
+  random_password_db_admin_pass = random_password.db_admin_pass.result
   laravel_credentials = {
     db: {
         admin_user: var.laravel_credentials.db.admin_user, 
@@ -542,6 +551,9 @@ module "security" {
   webapp_default_url = var.webapp_default_url
   custom_domain_enabled = var.custom_domain_enabled
   resource_group_id = azurerm_resource_group.RG_app_service.id
+  random_generated_db_admin_pass = random_password.db_admin_pass.result
+  db_host_write = module.db.db_host
+  db_host_read = module.db.db_host
 }
 module "governance" {
   source = "./modules/governance"
